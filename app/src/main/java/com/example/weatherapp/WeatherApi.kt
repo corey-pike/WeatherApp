@@ -1,21 +1,19 @@
 //WeatherApi.kt
 package com.example.weatherapp
 
-import kotlinx.coroutines.flow.Flow
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-interface WeatherApi {
-
+interface ApiService {
     @GET("weather")
     suspend fun getCurrentWeather(
-        @Query("zip") zipCode: String,
+        @Query("zip") zipcode: String,
         @Query("appid") apiKey: String
-    ): Flow<@JvmSuppressWildcards WeatherData>
+    ): WeatherData
 
     @GET("forecast/daily")
-    suspend fun getWeatherForecast(
-        @Query("zip") zipCode: String,
+    suspend fun getForecast(
+        @Query("zip") zipcode: String,
         @Query("appid") apiKey: String
-    ): Flow<@JvmSuppressWildcards WeatherData>
+    ): Forecast
 }
