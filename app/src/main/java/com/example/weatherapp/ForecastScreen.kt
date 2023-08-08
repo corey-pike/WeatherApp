@@ -1,4 +1,6 @@
 //ForecastScreen.kt
+@file:Suppress("DEPRECATION")
+
 package com.example.weatherapp
 
 import android.annotation.SuppressLint
@@ -23,8 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,7 +36,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -44,9 +47,22 @@ import java.time.ZoneId
 @Composable
 fun ForecastScreen(
     navController: NavHostController,
-    viewModel: ForecastViewModel = hiltViewModel()
+    viewModel: ForecastViewModel,
 ) {
-    val forecastItems by viewModel.forecastLiveData.observeAsState()
+    val forecastItems = viewModel.forecast.collectAsState(null)
+
+    val zipCode = remember {
+        val backStackEntry = navController.currentBackStackEntry
+        backStackEntry?.arguments?.getString("zipCode") ?: ""
+    }
+
+    LaunchedEffect(Unit) {
+        if (isValidZipCode(zipCode)) {
+            viewModel.fetchForecast(zipCode, "3723dded195b2c6ec85f31a5c5e0b1ae")
+        } else {
+            println("Invalid ZIP code: $zipCode")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -96,72 +112,88 @@ fun ForecastScreen(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun ForecastItemView(forecastItem: WeatherData?) {
+fun ForecastItemView(forecastItem: State<Forecast?>) {
 
-    val sunriseTime = Date(forecastItem!!.sys.sunrise)
-    val sunsetTime = Date(forecastItem.sys.sunset)
-    val formatter = DateTimeFormatter.ofPattern("hh:mm a")
-    val sunriseTimeFormatted = sunriseTime.toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
-        .format(formatter)
-    val sunsetTimeFormatted = sunsetTime.toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
+    forecastItem.value?.let { forecastData ->
 
-    Column(
-        modifier = Modifier
-            .padding(top = 30.dp)
-            .fillMaxWidth()
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Image(
-                painter = painterResource(R.drawable.sunny),
-                contentDescription = null,
-                modifier = Modifier.size(50.dp)
-            )
-            Text(
-                text = "${forecastItem.dt}",
-                fontSize = 16.sp,
-                textAlign = TextAlign.Right
-            )
-            Column(
-                modifier = Modifier.padding(start = 14.dp)
-            ) {
-                Text(
-                    text = "Temp: ${forecastItem.temp.day.toInt()}°",
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "High: ${forecastItem.temp.max.toInt()}°",
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "Low: ${forecastItem.temp.min.toInt()}°",
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(end = 10.dp)
-                    )
+        val sunriseTime = Date(forecastData.sunrise)
+        val sunsetTime = Date(forecastData.sunset)
+        val formatter = DateTimeFormatter.ofPattern("hh:mm a")
+        val sunriseTimeFormatted =
+            sunriseTime.toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
+                .format(formatter)
+        val sunsetTimeFormatted =
+            sunsetTime.toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
+
+        Text("Forecast:")
+        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+            forecastData.forecasts.forEach { forecastItem ->
+                WeatherConditionIcon(url = forecastItem.iconUrl)
+
+                Column(
+                    modifier = Modifier
+                        .padding(top = 30.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.sunny),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+                        Text(
+                            text = forecastItem.date,
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Right
+                        )
+                        Column(
+                            modifier = Modifier.padding(start = 14.dp)
+                        ) {
+                            Text(
+                                text = "Temp: ${forecastData.temperature.temp.toInt()}°",
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "High: ${forecastData.temperature.high.toInt()}°",
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                                Text(
+                                    text = "Low: ${forecastData.temperature.low.toInt()}°",
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(end = 10.dp)
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.padding(start = 8.dp),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                text = "Sunrise: ${sunriseTimeFormatted.format(formatter)}",
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Right
+                            )
+                            Text(
+                                text = "Sunset: ${sunsetTimeFormatted.format(formatter)}",
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Right
+                            )
+                        }
+                    }
                 }
-            }
-            Column(
-                modifier = Modifier.padding(start = 8.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    text = "Sunrise: ${sunriseTimeFormatted.format(formatter)}",
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Right
-                )
-                Text(
-                    text = "Sunset: ${sunsetTimeFormatted.format(formatter)}",
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Right
-                )
             }
         }
     }
+}
+
+fun isValidZipCode(zipCode: String): Boolean {
+    return zipCode.matches(Regex("^\\d{5}$"))
 }

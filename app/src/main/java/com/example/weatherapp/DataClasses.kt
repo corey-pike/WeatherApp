@@ -3,76 +3,40 @@ package com.example.weatherapp
 
 import com.squareup.moshi.Json
 
-data class ForecastTemp(
-    val day: Float,
-    val min: Float,
-    val max: Float
+data class Temperature(
+    val temp: Double,
+    @Json(name = "temp_max") val high: Double,
+    @Json(name = "temp_mix") val low: Double,
+    @Json(name = "feels_like") val feelsLike: Double
 )
 
-data class Weather(
-    val id: Int,
-    val main: String,
-    val description: String,
+data class WeatherCondition(
     val icon: String
 )
 
-data class Main(
-    val temp: Double,
-    val feels_like: Double,
-    val temp_min: Double,
-    val temp_max: Double,
-    val pressure: Int,
-    val humidity: Int
-)
-
-data class Sys(
-    val type: Int,
-    val id: Int,
-    val message: Double,
-    val country: String,
-    val sunrise: Long,
-    val sunset: Long
-)
-
 data class WeatherData(
-    val weather: List<Weather>,
-    val base: String,
-    val main: Main,
-    val dt: Long,
-    val sys: Sys,
-    val timezone: Int,
-    val id: Int,
+    @Json(name = "weather") val weatherConditions: List<WeatherCondition>,
     val name: String,
-    val cod: Int,
-    val temp: ForecastTemp,
-)
+    @Json(name = "main") val temperature: Temperature
+) {
+    val highTemp: Double
+        get() = (temperature.high - 273.15) * 1.8 + 32
 
-data class City(
-    val id: Int,
-    val name: String,
-    val country: String,
-    val population: Int
-)
+    val iconUrl: String
+        get() = "https://openweathermap.org/img/wn/${weatherConditions.firstOrNull()?.icon}@2x.png"
+}
 
-data class Temp(
-    val day: Double,
-    val min: Double,
-    val max: Double,
-)
+data class ForecastItem(
+    @Json(name = "weather") val weatherConditions: List<WeatherCondition>,
+    val date: String
+) {
+    val iconUrl: String
+        get() = "https://openweathermap.org/img/wn/${weatherConditions.firstOrNull()?.icon}@2x.png"
+}
 
-data class ListItem(
-    val dt: Long,
-    val temp: Temp,
-    val pressure: Double,
-    val humidity: Int,
-    val weather: List<Weather>,
-    val deg: Int,
-)
-
-data class ForecastData(
-    val city: City,
-    val cod: String,
-    val message: Double,
-    val cnt: Int,
-    val list: List<ListItem>
+data class Forecast(
+    val sunrise: String,
+    val sunset: String,
+    val temperature: Temperature,
+    @Json(name = "list") val forecasts: List<ForecastItem>
 )
